@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Runtime audit logs (the committed sample lives in samples/)
+audit/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Never commit secrets
+.env
+*.key
+*.pem

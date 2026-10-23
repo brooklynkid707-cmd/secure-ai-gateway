@@ -1,0 +1,110 @@
+# Personal data in requests - redacted with reversible placeholders, restored on the way back.
+# All values are synthetic (example.com addresses, 555 numbers, test card numbers, invalid-area SSNs).
+cases:
+  - id: pii-001
+    category: pii
+    title: Email address redacted upstream and restored in the reply
+    identity: analyst
+    request:
+      model: mock-gpt
+      messages:
+        - role: user
+          content: "Draft a reply to dana.k@example.com about her ticket."
+    expect: {status: 200, decision: allow, actions_include: [dlp_redact, placeholders_restored], response_contains: "dana.k@example.com"}
+
+  - id: pii-002
+    category: pii
+    title: US phone number
+    identity: viewer
+    request:
+      model: mock-gpt
+      messages:
+        - role: user
+          content: "Call me back at (555) 867-5309 if the VPN is still down."
+    expect: {status: 200, decision: allow, actions_include: [dlp_redact]}
+
+  - id: pii-003
+    category: pii
+    title: Well-formed SSN
+    identity: analyst
+    request:
+      model: mock-gpt
+      messages:
+        - role: user
+          content: "The HR form lists 219-09-9999 - is that a plausible SSN format?"
+    expect: {status: 200, decision: allow, actions_include: [dlp_redact]}
+
+  - id: pii-004
+    category: pii
+    title: Invalid SSN area number is NOT flagged
+    identity: analyst
+    request:
+      model: mock-gpt
+      messages:
+        - role: user
+          content: "Is 000-12-3456 ever issued as an SSN?"
+    expect: {status: 200, decision: allow, actions_exclude: [dlp_redact]}
+
+  - id: pii-005
+    category: pii
+    title: Credit card number that passes Luhn
+    identity: analyst
+    request:
+      model: mock-gpt
+      messages:
+        - role: user
+          content: "Customer says card 4111 1111 1111 1111 was declined twice."
+    expect: {status: 200, decision: allow, actions_include: [dlp_redact]}
+
+  - id: pii-006
+    category: pii
+    title: Sixteen digits that FAIL Luhn are left alone
+    identity: analyst
+    request:
+      model: mock-gpt
+      messages:
+        - role: user
+          content: "Order reference 4111 1111 1111 1112 is stuck in processing."
+    expect: {status: 200, decision: allow, actions_exclude: [dlp_redact]}
+
+  - id: pii-007
+    category: pii
+    title: Several identifiers in one message
+    identity: analyst
+    request:
+      model: mock-gpt
+      messages:
+        - role: user
+          content: "Contact: sam.lee@example.com, +1 555-201-0199, SSN 219-09-9998. Summarize for the case file."
+    expect: {status: 200, decision: allow, actions_include: [dlp_redact, placeholders_restored], response_contains: "sam.lee@example.com"}
+
+  - id: pii-008
+    category: pii
+    title: Private IPv4 address triggers the warn-only detector
+    identity: viewer
+    request:
+      model: mock-gpt
+      messages:
+        - role: user
+          content: "Why can't I reach the printer at 192.168.10.44?"
+    expect: {status: 200, decision: allow, actions_include: [dlp_warn], actions_exclude: [dlp_redact]}
+
+  - id: pii-009
+    category: pii
+    title: PII in a tool result is redacted too
+    identity: analyst
+    request:
+      model: mock-gpt
+      messages:
+        - role: user
+          content: "Look up the requester."
+        - role: assistant
+          content: ""
+          tool_calls:
+            - id: call_5
+              type: function
+              function: {name: search_kb, arguments: "{\"q\": \"requester\"}"}
+        - role: tool
+          tool_call_id: call_5
+          content: "Requester: Priya N, priya.n@example.com, 555-310-2201"
+    expect: {status: 200, decision: allow, actions_include: [dlp_redact]}

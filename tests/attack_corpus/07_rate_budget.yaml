@@ -1,0 +1,31 @@
+# Abuse of quotas: bursts and daily token budgets.
+cases:
+  - id: rate-001
+    category: rate_limit
+    title: Burst of 6 requests against a burst-3 identity
+    identity: burst
+    repeat: 6
+    request:
+      model: mock-gpt
+      messages: [{role: user, content: "ping"}]
+    expect: {any_status: 429, status: 429, code: rate_limited}
+
+  - id: rate-002
+    category: rate_limit
+    title: Normal analyst burst of 5 stays under its limit
+    identity: analyst
+    repeat: 5
+    request:
+      model: mock-gpt
+      messages: [{role: user, content: "ping"}]
+    expect: {status: 200, decision: allow}
+
+  - id: rate-003
+    category: rate_limit
+    title: Daily token budget exhausted after a handful of requests
+    identity: budget
+    repeat: 8
+    request:
+      model: mock-gpt
+      messages: [{role: user, content: "Give me a one-paragraph overview of zero trust network access."}]
+    expect: {any_status: 429, status: 429, code: budget_exceeded}

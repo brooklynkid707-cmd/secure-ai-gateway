@@ -1,0 +1,74 @@
+# API-key identities for the Secure AI Gateway.
+#
+# Keys are stored as SHA-256 digests only. The DEMO plaintext keys below are
+# synthetic and exist so the selftest and README examples work out of the box;
+# they are listed in README.md. Generate a digest for a real key with:
+#
+#   python -m gateway hash-key
+#
+# Fields:
+#   id                   stable principal name used in audit records
+#   role                 viewer | analyst | admin   (rules live in the policy file)
+#   key_sha256           hex digest of the bearer token
+#   requests_per_minute  token-bucket refill rate
+#   burst                token-bucket capacity (max requests in a short burst)
+#   daily_token_budget   prompt+completion tokens allowed per UTC day
+#   networks             optional CIDR allowlist for this key (policy may add role-level rules)
+#   disabled             revoke without deleting history
+
+identities:
+  - id: vera-viewer
+    description: Help-desk user; may ask general questions only
+    role: viewer
+    key_sha256: 09039aa41f64c3629a2fce29a9349804378cbb462a36f94d331f9a48b6ca375b   # sag-viewer-demo-key-0001
+    requests_per_minute: 60
+    burst: 20
+    daily_token_budget: 50000
+
+  - id: alex-analyst
+    description: SOC analyst; may use tools and send more context
+    role: analyst
+    key_sha256: 85938f70af0c868e982cbae522a2d5e2abae13c151533aa0451d4a32b7d7420d   # sag-analyst-demo-key-0002
+    requests_per_minute: 120
+    burst: 40
+    daily_token_budget: 200000
+
+  - id: ada-admin
+    description: Gateway administrator; can read audit and reload policy
+    role: admin
+    key_sha256: addc1ca2ac2da466411498c8054363c14baac134cfa9e66d91ca2ebd966abd28   # sag-admin-demo-key-0003
+    requests_per_minute: 120
+    burst: 40
+    daily_token_budget: 500000
+
+  - id: burst-bot
+    description: Service account with a deliberately small burst, used by the rate-limit selftest
+    role: analyst
+    key_sha256: ed2d592480511269d705003d4934c8faea72e799eb3084e2788898ea9e904cd1   # sag-burst-demo-key-0004
+    requests_per_minute: 30
+    burst: 3
+    daily_token_budget: 200000
+
+  - id: budget-bot
+    description: Service account with a tiny daily budget, used by the budget selftest
+    role: analyst
+    key_sha256: 7bf9aef6b2033544b87d6ffae272551d3fbf86b52e52e0720d449891e468baec   # sag-budget-demo-key-0005
+    requests_per_minute: 60
+    burst: 20
+    daily_token_budget: 600
+
+  - id: partner-integration
+    description: External partner key pinned to their egress range (RFC 5737 documentation block)
+    role: analyst
+    key_sha256: 91380a0c9ebc0c55e0abdd262a9ee01a3306924adbece8bac8997c477b583ff7   # sag-partner-demo-key-0006
+    networks:
+      - 203.0.113.0/24
+    requests_per_minute: 60
+    burst: 20
+    daily_token_budget: 100000
+
+  - id: former-contractor
+    description: Revoked key kept on file so its audit history stays attributable
+    role: analyst
+    key_sha256: f45b2639bc63f28eb2041364779d48a3a5ec05aee34150a6d830947fb4f86428   # sag-revoked-demo-key-0007
+    disabled: true

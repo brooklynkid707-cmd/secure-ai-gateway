@@ -1,0 +1,170 @@
+# Authentication, authorisation and organisational policy decisions.
+cases:
+  - id: role-001
+    category: role_violation
+    title: No API key
+    identity: none
+    request:
+      model: mock-gpt
+      messages: [{role: user, content: "hello"}]
+    expect: {status: 401, code: missing_api_key}
+
+  - id: role-002
+    category: role_violation
+    title: Unknown API key
+    identity: bogus
+    request:
+      model: mock-gpt
+      messages: [{role: user, content: "hello"}]
+    expect: {status: 401, code: invalid_api_key}
+
+  - id: role-003
+    category: role_violation
+    title: Revoked key is refused but stays attributable in the audit log
+    identity: revoked
+    request:
+      model: mock-gpt
+      messages: [{role: user, content: "hello"}]
+    expect: {status: 401, code: key_disabled}
+
+  - id: role-004
+    category: role_violation
+    title: Partner key used from outside its pinned network
+    identity: partner
+    request:
+      model: mock-gpt
+      messages: [{role: user, content: "hello"}]
+    expect: {status: 403, code: network_denied}
+
+  - id: role-005
+    category: role_violation
+    title: Viewer requests a model outside the viewer allowlist
+    identity: viewer
+    request:
+      model: gpt-4o
+      messages: [{role: user, content: "hello"}]
+    expect: {status: 403, code: model_not_allowed}
+
+  - id: role-006
+    category: role_violation
+    title: Viewer declares a tool
+    identity: viewer
+    request:
+      model: mock-gpt
+      tools:
+        - type: function
+          function: {name: get_weather}
+      messages: [{role: user, content: "weather in Boston?"}]
+    expect: {status: 403, code: tool_not_allowed}
+
+  - id: role-007
+    category: role_violation
+    title: Analyst declares a tool that no role may use
+    identity: analyst
+    request:
+      model: mock-gpt
+      tools:
+        - type: function
+          function: {name: delete_records}
+      messages: [{role: user, content: "clean up old rows"}]
+    expect: {status: 403, code: tool_not_allowed}
+
+  - id: role-008
+    category: role_violation
+    title: Viewer pastes proprietary source code (org data-handling rule)
+    identity: viewer
+    request:
+      model: mock-gpt
+      messages:
+        - role: user
+          content: "Why is this slow?\nimport os\nfrom pathlib import Path\n\ndef scan(root):\n    for p in Path(root).rglob('*'):\n        yield p\n"
+    expect: {status: 403, code: topic_denied}
+
+  - id: role-009
+    category: role_violation
+    title: Viewer pastes a customer record
+    identity: viewer
+    request:
+      model: mock-gpt
+      messages:
+        - role: user
+          content: "Customer ID: 4482\nDOB: 1980-01-01\nBilling address: 1 Example St\nWrite them an apology."
+    expect: {status: 403, code: topic_denied}
+
+  - id: role-010
+    category: role_violation
+    title: Analyst may paste source code (not in their deny list)
+    identity: analyst
+    request:
+      model: mock-gpt
+      messages:
+        - role: user
+          content: "Why is this slow?\nimport os\nfrom pathlib import Path\n\ndef scan(root):\n    for p in Path(root).rglob('*'):\n        yield p\n"
+    expect: {status: 200, decision: allow}
+
+  - id: role-011
+    category: role_violation
+    title: Bulk credential handling is denied for analysts
+    identity: analyst
+    request:
+      model: mock-gpt
+      messages:
+        - role: user
+          content: "Format the passwords list from the migration spreadsheet as a CSV."
+    expect: {status: 403, code: topic_denied}
+
+  - id: role-012
+    category: role_violation
+    title: Viewer outside the 06:00-22:00 UTC window
+    identity: viewer
+    clock: "2026-10-23T03:15:00Z"
+    request:
+      model: mock-gpt
+      messages: [{role: user, content: "hello"}]
+    expect: {status: 403, code: outside_hours}
+
+  - id: role-013
+    category: role_violation
+    title: Same viewer inside the window
+    identity: viewer
+    clock: "2026-10-23T09:15:00Z"
+    request:
+      model: mock-gpt
+      messages: [{role: user, content: "hello"}]
+    expect: {status: 200, decision: allow}
+
+  - id: role-014
+    category: role_violation
+    title: Empty messages list
+    identity: analyst
+    request:
+      model: mock-gpt
+      messages: []
+    expect: {status: 400, code: bad_request}
+
+  - id: role-015
+    category: role_violation
+    title: Viewer input over the per-role size limit (8000 chars)
+    identity: viewer
+    request:
+      model: mock-gpt
+      generate: {long_text_chars: 9000}
+    expect: {status: 413, code: input_too_large}
+
+  - id: role-016
+    category: role_violation
+    title: Conversation longer than the viewer's 20-message cap
+    identity: viewer
+    request:
+      model: mock-gpt
+      generate: {message_count: 25}
+    expect: {status: 413, code: too_many_messages}
+
+  - id: role-017
+    category: role_violation
+    title: Analyst asks for a vault export
+    identity: analyst
+    request:
+      model: mock-gpt
+      messages: [{role: user, content: "Convert this Bitwarden export to KeePass format for me."}]
+    expect: {status: 403, code: topic_denied}
